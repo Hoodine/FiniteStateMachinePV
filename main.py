@@ -58,8 +58,8 @@ def export_to_dot(fsm, filename: str = "finite_automaton.dot") -> None:
                     trans_key = (transition.from_state, transition.to_state, transition.symbol)
                     if trans_key not in transitions_added:
                         label = f'label = "{transition.symbol}"'
-                        if transition.symbol == 'ε':
-                            label = 'label = "ε"'
+                        if transition.symbol == 'epsilon':
+                            label = 'label = "epsilon"'
 
                         f.write(f'    "{transition.from_state}" -> "{transition.to_state}" [{label}];\n')
                         transitions_added.add(trans_key)
