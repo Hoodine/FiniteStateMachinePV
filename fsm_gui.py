@@ -277,18 +277,14 @@ class AnimationControlDialog(QDialog):
 
         # Добавляем кнопки для алфавита
         for symbol in alphabet[:8]:  # Ограничиваем количество кнопок
-            btn = QPushButton(symbol)
+            if symbol == "epsilon":
+                btn = QPushButton("ε")
+            else:
+                btn = QPushButton(symbol)
             btn.clicked.connect(lambda checked, s=symbol: self.add_symbol(s))
             btn.setMaximumWidth(40)
             buttons_layout.addWidget(btn)
             self.symbol_buttons.append(btn)
-
-        # Кнопка для epsilon
-        if 'epsilon' in alphabet:
-            epsilon_btn = QPushButton("ε")
-            epsilon_btn.clicked.connect(lambda: self.add_symbol('epsilon'))
-            epsilon_btn.setMaximumWidth(40)
-            buttons_layout.addWidget(epsilon_btn)
 
         # Кнопка очистки
         clear_btn = QPushButton("Очистить")
@@ -425,7 +421,6 @@ class FSMMainWindow(QMainWindow):
         main_layout.addWidget(center_splitter, 3)
 
         self.create_menu()
-        self.create_toolbar()
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
@@ -522,19 +517,19 @@ class FSMMainWindow(QMainWindow):
         control_frame.setFrameStyle(QFrame.Shape.StyledPanel)
         control_layout = QHBoxLayout()
 
-        self.prev_frame_btn = QPushButton("⏮ Предыдущий")
+        self.prev_frame_btn = QPushButton("⏮")
         self.prev_frame_btn.clicked.connect(self.prev_animation_frame)
         self.prev_frame_btn.setEnabled(False)
 
-        self.play_pause_btn = QPushButton("⏸ Пауза")
+        self.play_pause_btn = QPushButton("⏸")
         self.play_pause_btn.clicked.connect(self.toggle_animation)
         self.play_pause_btn.setEnabled(False)
 
-        self.next_frame_btn = QPushButton("Следующий ⏭")
+        self.next_frame_btn = QPushButton("⏭")
         self.next_frame_btn.clicked.connect(self.next_animation_frame)
         self.next_frame_btn.setEnabled(False)
 
-        self.stop_animation_btn = QPushButton("⏹ Стоп")
+        self.stop_animation_btn = QPushButton("⏹")
         self.stop_animation_btn.clicked.connect(self.stop_animation)
         self.stop_animation_btn.setEnabled(False)
 
@@ -677,7 +672,7 @@ class FSMMainWindow(QMainWindow):
         prev_frame_action.triggered.connect(self.prev_animation_frame)
         animation_menu.addAction(prev_frame_action)
 
-        next_frame_action = QAction("Следующий кадр ⏭", self)
+        next_frame_action = QAction("⏭ Следующий кадр", self)
         next_frame_action.triggered.connect(self.next_animation_frame)
         animation_menu.addAction(next_frame_action)
 
@@ -686,45 +681,6 @@ class FSMMainWindow(QMainWindow):
         about_action = QAction("ℹ️ О программе", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
-
-    def create_toolbar(self):
-        toolbar = QToolBar("Основные инструменты")
-        toolbar.setIconSize(QSize(24, 24))
-        self.addToolBar(toolbar)
-
-        new_action = QAction("📄", self)
-        new_action.setToolTip("Новый автомат")
-        new_action.triggered.connect(self.clear_fsm)
-        toolbar.addAction(new_action)
-
-        toolbar.addSeparator()
-
-        add_state_action = QAction("🔘", self)
-        add_state_action.setToolTip("Добавить состояние")
-        add_state_action.triggered.connect(self.add_state)
-        toolbar.addAction(add_state_action)
-
-        add_transition_action = QAction("➡️", self)
-        add_transition_action.setToolTip("Добавить переход")
-        add_transition_action.triggered.connect(self.add_transition)
-        toolbar.addAction(add_transition_action)
-
-        toolbar.addSeparator()
-
-        validate_action = QAction("✓", self)
-        validate_action.setToolTip("Валидация")
-        validate_action.triggered.connect(self.validate_fsm)
-        toolbar.addAction(validate_action)
-
-        animate_action = QAction("🎬", self)
-        animate_action.setToolTip("Анимация")
-        animate_action.triggered.connect(self.start_animation)
-        toolbar.addAction(animate_action)
-
-        export_action = QAction("💾", self)
-        export_action.setToolTip("Экспорт")
-        export_action.triggered.connect(self.export_scheme)
-        toolbar.addAction(export_action)
 
     def refresh_display(self):
         """Обновление всех отображений"""
@@ -838,6 +794,7 @@ class FSMMainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", str(e))
 
     def edit_state(self):
+        """Редактирование состояния - изменение типа (стартовое/конечное)"""
         current_item = self.states_list.currentItem()
         if not current_item:
             QMessageBox.warning(self, "Ошибка", "Выберите состояние для редактирования")
@@ -846,10 +803,83 @@ class FSMMainWindow(QMainWindow):
         state_name = current_item.text().split()[0]
         state = self.fsm.states[state_name]
 
-        # Переключаем конечное состояние
-        state.is_final = not state.is_final
-        self.refresh_display()
-        self.status_bar.showMessage(f"Состояние '{state_name}' обновлено", 3000)
+        # Создаем диалог для редактирования состояния
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Редактирование состояния '{state_name}'")
+        dialog.setModal(True)
+        dialog.resize(300, 150)
+
+        layout = QVBoxLayout()
+
+        # Заголовок
+        title_label = QLabel(f"Редактирование состояния: <b>{state_name}</b>")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+
+        layout.addSpacing(10)
+
+        # Флажок для стартового состояния
+        start_checkbox = QCheckBox("Стартовое состояние")
+        start_checkbox.setChecked(state.is_start)
+
+        # Проверяем, есть ли уже другое стартовое состояние
+        if state.is_start:
+            start_checkbox.setEnabled(True)
+        else:
+            # Если текущее состояние не стартовое, проверяем, есть ли уже стартовое состояние
+            other_start_state = any(s.is_start and s.name != state_name
+                                    for s in self.fsm.states.values())
+            if other_start_state:
+                start_checkbox.setEnabled(False)
+                start_checkbox.setToolTip(
+                    "Стартовое состояние уже установлено. Сначала снимите флажок с текущего стартового состояния.")
+            else:
+                start_checkbox.setEnabled(True)
+
+        layout.addWidget(start_checkbox)
+
+        # Флажок для конечного состояния
+        final_checkbox = QCheckBox("Конечное состояние")
+        final_checkbox.setChecked(state.is_final)
+        layout.addWidget(final_checkbox)
+
+        layout.addSpacing(20)
+
+        # Кнопки
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        dialog.setLayout(layout)
+
+        if dialog.exec():
+            # Применяем изменения
+            new_is_start = start_checkbox.isChecked()
+            new_is_final = final_checkbox.isChecked()
+
+            # Если состояние становится стартовым, снимаем флаг с предыдущего
+            if new_is_start and not state.is_start:
+                if self.fsm.start_state and self.fsm.start_state.name != state_name:
+                    old_start_state = self.fsm.states[self.fsm.start_state.name]
+                    old_start_state.is_start = False
+
+                state.is_start = True
+                self.fsm.start_state = state
+            elif not new_is_start and state.is_start:
+                # Если снимаем флаг стартового состояния
+                state.is_start = False
+                self.fsm.start_state = None
+
+            # Устанавливаем конечное состояние
+            state.is_final = new_is_final
+
+            # Обновляем отображение
+            self.refresh_display()
+            self.status_bar.showMessage(f"Состояние '{state_name}' обновлено", 3000)
 
     def remove_state(self):
         current_item = self.states_list.currentItem()
@@ -1084,7 +1114,7 @@ class FSMMainWindow(QMainWindow):
             # Запускаем автоматическое воспроизведение если включено
             if animation_data['auto_play']:
                 self.animation_timer.start()
-                self.play_pause_btn.setText("⏸ Пауза")
+                self.play_pause_btn.setText("⏸")
 
             # Обновляем статус
             total_frames = len(self.animation_frames)
@@ -1114,12 +1144,12 @@ class FSMMainWindow(QMainWindow):
         """Переключение паузы/воспроизведения"""
         if self.animation_timer.isActive():
             self.animation_timer.stop()
-            self.play_pause_btn.setText("▶️ Воспр.")
+            self.play_pause_btn.setText("▶️")
         else:
             if self.current_frame >= len(self.animation_frames) - 1:
                 self.current_frame = 0
             self.animation_timer.start()
-            self.play_pause_btn.setText("⏸ Пауза")
+            self.play_pause_btn.setText("⏸")
 
     def next_animation_frame(self):
         """Следующий кадр анимации"""
@@ -1130,7 +1160,7 @@ class FSMMainWindow(QMainWindow):
         if self.current_frame >= len(self.animation_frames):
             self.current_frame = len(self.animation_frames) - 1
             self.animation_timer.stop()
-            self.play_pause_btn.setText("▶️ Воспр.")
+            self.play_pause_btn.setText("▶️")
             self.animation_status.setText(f"Анимация завершена | Кадр: {self.current_frame + 1}/{len(self.animation_frames)}")
         else:
             self.show_animation_frame(self.current_frame)
@@ -1379,7 +1409,7 @@ class FSMMainWindow(QMainWindow):
         about_text = """
         <h2>Finite State Machine Designer</h2>
         <p>Приложение для работы с конечными автоматами.</p>
-        <p>Версия: 1.0</p>
+        <p>Версия: 0.3b</p>
         <p><b>Новые возможности:</b></p>
         <ul>
             <li>Визуализация графов с помощью matplotlib и networkX</li>

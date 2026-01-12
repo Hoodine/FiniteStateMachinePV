@@ -305,7 +305,7 @@ class FSMMatplotlibVisualizer:
         ]
 
         self.ax.legend(handles=legend_elements,
-                      loc='upper left',
+                      loc='lower right',
                       fontsize=9,
                       framealpha=0.95,
                       frameon=True,
